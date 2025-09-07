@@ -1,10 +1,10 @@
-# Разработка проекта
+# Project Development
 
-## Правила хорошего тона
-- Оптимальная организация файловой структуры
-- подключение библиотек через npm
-- хранение библиотек в репозитории
+## Best Practices
+- Optimal file structure organization
+- Library integration via npm
+- Repository library storage
 
-## Сборка
-## Простой сервер
-## Разбор и анализ ранее созданных проектов
+## Build Process
+## Simple Server
+## Analysis of Previously Created Projects

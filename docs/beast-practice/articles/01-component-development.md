@@ -1,10 +1,10 @@
-# Разработка компонента
+# Component Development
 
-## Оптимальное именование
+## Optimal Naming
 
-В именах любых сущностей: блоков, элементов, модификаторов, событий и параметров — следует использовать нотацию __camelCase__ — это избавляет от необходимости писать кавычки в json. Названия блоков пишутся с большой буквы.
+Entity names (blocks, elements, modifiers, events, parameters) should use __camelCase__ notation — this eliminates the need for quotes in JSON. Block names are capitalized.
 
-__Неправильно:__
+__Incorrect:__
 ```js
 Beast.decl({
     'block-name': {
@@ -14,7 +14,7 @@ Beast.decl({
 })
 ```
 
-__Правильно:__
+__Correct:__
 ```js
 Beast.decl({
     BlockName: {
@@ -26,11 +26,11 @@ Beast.decl({
 })
 ```
 
-__Составные имена__ используются для однородных компонентов (как правило, они имеют общего предка). Представим некий блок карточки `Card` с фоном и заголовком. От этого блока может наследоваться карточка с формой заказа такси — логично назвать ее `CardTaxi`; карточка поиска для авиабилетов — `CardAvia`, и так далее.
+__Compound names__ are used for homogeneous components (usually sharing a common ancestor). Consider a `Card` block with background and title. From this block, a taxi booking card could inherit — logically named `CardTaxi`; an airline search card — `CardAvia`, and so on.
 
-Если блоки сильно разнятся между собой по внешнему виду и поведению, но имеют общего предка — не стоит учитывать это в их именах. Например `Button` и `Input` могут быть унаследованы от `Control`, но названия `ControlButton` и `ControlInput` были бы избыточны. 
+If blocks differ significantly in appearance and behavior but share a common ancestor — this shouldn't be reflected in their names. For example, `Button` and `Input` may inherit from `Control`, but names like `ControlButton` and `ControlInput` would be redundant.
 
-Составные имена дают элементам, когда те подчинены другим элементам.
+Compound names are given to elements when they're subordinate to other elements.
 
 ```xml
 <Head>
@@ -45,395 +45,473 @@ __Составные имена__ используются для однород
 <Head>
 ```
 
-## Работа с модификаторами
+## Working with Modifiers
 
-Модификаторы определяют характеристики внешнего вида и поведения компонента. Изменение модификатора порождает соответствующее событие. Модификатору соответствует CSS-класс. Модификаторы пишутся с большой буквы.
-
-__Модификатор состояния__ компонента (State) встречается чаще остальных. Существует соглашение, что если значение модификатора — глагол, то совершенного вида: actived, closed, selected.
-
-Общепринятые названия и значения (в скобках) частоиспользуемых модификаторов:
-- __State__ (released, activated) — состояние
-- __Theme__ (default) — скин внешнего вида
-- __Size__ (XS, S, M, L, XL) — размер
-- __Col__ — ширина в колонках сетки
-
-В декларации компонента следует перечислять все возможные модификаторы со значениями по умолчанию, а также перечислением возможных значений в комментариях (то же касается и параметров).
+Modifiers define component appearance and behavior characteristics. Changing a modifier triggers a corresponding event. A modifier corresponds to a CSS class. Modifiers are capitalized.
 
 ```js
-Beast.decl({
-    Button: {
-        mod: {
-            Size: 'M', // S, M, L
-            Theme: 'light', // light, dark
-            Style: 'fill', // fill, border
+Beast.decl('Button', {
+    expand: function () {
+        this.mod('Type', 'normal')
+    }
+})
+```
+
+If the component should have a certain modifier by default, it's set in the `expand` method. When the component is created, modifiers can be passed through attributes:
+
+```xml
+<Button Type="submit"/>
+```
+
+### Modifier Values
+
+Boolean modifiers have values `true/false`. String modifiers can have any textual value.
+
+```js
+node.mod('visible', true)
+node.mod('Type', 'submit')
+node.mod('Size', 'large')
+```
+
+### Modifier Events
+
+Changing a modifier value automatically triggers an event in the format `onMod{ModifierName}`. The event handler receives two arguments: the new value and the previous value.
+
+```js
+Beast.decl('Button', {
+    onModType: function (newValue, prevValue) {
+        console.log(`Type changed from ${prevValue} to ${newValue}`)
+    }
+})
+```
+
+### CSS Classes for Modifiers
+
+Setting a modifier automatically adds a corresponding CSS class to the DOM element. The class format follows BEM methodology: `block_modifier_value` for blocks and `block__element_modifier_value` for elements.
+
+```js
+// Setting modifier
+button.mod('Type', 'submit')
+
+// Results in CSS class
+// .button_type_submit
+```
+
+## Event Handling
+
+Beast provides several ways to handle events:
+
+### DOM Events
+
+Standard DOM events can be handled using the `on` object in the declaration:
+
+```js
+Beast.decl('Button', {
+    on: {
+        click: function (event) {
+            console.log('Button clicked')
         },
-        param: {
-            width: '',
-            height: '',
-            href: '',
-        }
-    }
-})
-```
-
-## Работа параметрами
-
-Параметры хранят абстрактные значения, которые могут быть использованы для чего угодно. Изменение параметра не сопровождается событием. Параметр никак не отображается в DOM-дереве.
-
-__Параметр или модификатор?__ Параметры следует использовать везде, где не требуются особенности модификатора.
-
-__Параметр или элемент?__ В элементами выражатеся то, что в итоге будет отображено. Параметры лишь влияют на поведение или отображение.
-
-__Неправильно:__
-```xml
-<Contents>
-    <title>Содержание</titlte>
-    <group title="Глава I">
-        <item>...</item>
-        <item>...</item>
-    </group>
-</Contents>
-
-<Button>
-    <width>200</width>
-</Button>
-```
-
-__Правильно:__
-```xml
-<Contents>
-    <title>Содержание</titlte>
-    <group>
-        <groupTitle>Глава I</groupTitle>
-        <item>...</item>
-        <item>...</item>
-    </group>
-</Contents>
-
-<Button width="200">...</Button>
-```
-
-Бывают менее однозначные ситуации: например, в блоке цены нужно указать код валюты, но на вывод попадет символ, а не код. В таких случаях предпочтение следует отдавать элементу.
-
-__Неправильно:__
-```xml
-<Price code="RUB">10000</Price>
-```
-
-__Правильно:__
-```xml
-<Price>
-    <value>10000</value>
-    <code>RUB</code>
-</Price>
-```
-
-## Работа с пользовательскими методами
-
-Методы могут быть private (для внутренних нужд, имя начинается с `_`) и public (интерфейс компонента). Элементы не следует наделять public-методами.
-
-```js
-Beast.decl({
-    Input: {
-        focus: function () {
-            this.elem('input').domNode().focus()
+        
+        mouseenter: function (event) {
+            this.mod('Hover', true)
         },
-        _hidePlaceholder: () {
-            this.elem('placeholder').mod('State', 'release')
+        
+        mouseleave: function (event) {
+            this.mod('Hover', false)
         }
     }
 })
 ```
 
-## Работа с пользовательскими событиями
+### Custom Events
 
-События компонент являются стандартными DOM-событиями. Чтобы застраховаться от пересечения имен с событиями браузера, внутренние события следует называть с большой буквы. Поддерживаемые компонентом события следует перечислять в поле декларации `on` с пустой строкой в качестве значения.
+Custom events can be triggered using the `trigger` method and handled using `on`:
 
 ```js
-Beast.decl({
-    Control: {
-        on: {
-            click: function () {
-                this.trigger('Release')
-            },
-
-            Press: '',
-            Release: '',
-            Focus: '',
-            Blur: '',
-        }
-    }
-})
-```
-
-События сообщают наружу об изменениях в компоненте. Не следует использовать события для внутренних манипуляций — для этого есть пользовательские методы.
-
-__Неправильно:__
-```js
-Beast.decl({
-    Message: {
-        on: {
-            Close: function () {
-                this.css('opacity', 0)
-                setTimeout(
-                    function () {
-                        this.mod('State', 'release')
-                    }.bind(this),
-                    this.param('opacityTransitionTime')
-                )
-            }
+Beast.decl('Modal', {
+    show: function () {
+        this.mod('Visible', true)
+        this.trigger('show')
+    },
+    
+    hide: function () {
+        this.mod('Visible', false)
+        this.trigger('hide')
+    },
+    
+    on: {
+        show: function () {
+            console.log('Modal is shown')
         },
+        
+        hide: function () {
+            console.log('Modal is hidden')
+        }
+    }
+})
+```
+
+### Window Events
+
+Global window events can be handled using the `onWin` object:
+
+```js
+Beast.decl('Header', {
+    onWin: {
+        scroll: function () {
+            const scrollTop = window.pageYOffset
+            this.mod('Fixed', scrollTop > 100)
+        },
+        
+        resize: function () {
+            this.updateLayout()
+        }
+    }
+})
+```
+
+## Component Lifecycle
+
+### expand Method
+
+The `expand` method is called during component initialization. It's used to set up the component structure, default modifiers, and initial state:
+
+```js
+Beast.decl('Dialog', {
+    expand: function () {
+        // Set default modifiers
+        this.mod('Visible', false)
+        this.mod('Size', 'medium')
+        
+        // Build component structure
+        this.append(
+            <header>
+                <title>{this.param('title')}</title>
+                <close/>
+            </header>,
+            <content>
+                {this.children()}
+            </content>
+        )
+    }
+})
+```
+
+### domInit Method
+
+The `domInit` method is called after the component is rendered to the DOM. It's used for DOM-related initialization:
+
+```js
+Beast.decl('Slider', {
+    domInit: function () {
+        this.slider = new SomeSliderLibrary(this.domNode())
+        this.slider.init()
+    }
+})
+```
+
+### afterDomInit Method
+
+The `afterDomInit` method is called after all child components have been initialized:
+
+```js
+Beast.decl('Form', {
+    afterDomInit: function () {
+        // All form fields are now initialized
+        this.validateAllFields()
+    }
+})
+```
+
+## Parameters
+
+Parameters are used to pass data to components. They're accessible via the `param` method:
+
+```js
+Beast.decl('User', {
+    expand: function () {
+        const name = this.param('name')
+        const email = this.param('email')
+        
+        this.append(
+            <name>{name}</name>,
+            <email>{email}</email>
+        )
+    }
+})
+```
+
+Usage:
+```xml
+<User name="John Doe" email="john@example.com"/>
+```
+
+### Default Parameters
+
+Default parameter values can be set in the declaration:
+
+```js
+Beast.decl('Button', {
+    Size: 'medium',
+    Type: 'button',
+    
+    expand: function () {
+        // this.param('Size') will return 'medium' if not specified
+        // this.param('Type') will return 'button' if not specified
+    }
+})
+```
+
+## Component State Management
+
+### Internal State
+
+Components can maintain internal state using regular JavaScript properties:
+
+```js
+Beast.decl('Counter', {
+    expand: function () {
+        this._count = 0
+        
+        this.append(
+            <display>{this._count}</display>,
+            <button>+</button>,
+            <button>-</button>
+        )
     },
-    Message__close: {
-        on: {
-            click: function () {
-                this.trigger('Close')
+    
+    increment: function () {
+        this._count++
+        this.elem('display').text(this._count)
+    },
+    
+    decrement: function () {
+        this._count--
+        this.elem('display').text(this._count)
+    },
+    
+    on: {
+        click: function (event) {
+            const target = event.target
+            if (target.textContent === '+') {
+                this.increment()
+            } else if (target.textContent === '-') {
+                this.decrement()
             }
         }
     }
 })
 ```
 
-__Правильно:__
+### Reactive Updates
+
+For more complex state management, use modifiers which automatically trigger updates:
+
 ```js
-Beast.decl({
-    Message: {
-        close: function () {
-            this.css('opacity', 0)
-            setTimeout(
-                function () {
-                    this.mod('State', 'release')
-                }.bind(this),
-                this.param('opacityTransitionTime')
-            )
-        }
+Beast.decl('TodoItem', {
+    expand: function () {
+        this.mod('Completed', this.param('completed', false))
+        
+        this.append(
+            <checkbox/>,
+            <text>{this.param('text')}</text>
+        )
     },
-    Message__close: {
-        on: {
-            click: function () {
-                this.parentBlock().close()
+    
+    onModCompleted: function (isCompleted) {
+        this.elem('checkbox').mod('Checked', isCompleted)
+        this.mod('State', isCompleted ? 'done' : 'pending')
+    }
+})
+```
+
+## Component Communication
+
+### Parent-Child Communication
+
+Children can communicate with parents using events:
+
+```js
+Beast.decl('TabPanel', {
+    expand: function () {
+        this.append(
+            <tabs>
+                <tab>Tab 1</tab>
+                <tab>Tab 2</tab>
+                <tab>Tab 3</tab>
+            </tabs>,
+            <content/>
+        )
+    },
+    
+    on: {
+        tabSelect: function (event, tabIndex) {
+            this.showTab(tabIndex)
+        }
+    }
+})
+
+Beast.decl('TabPanel__tab', {
+    on: {
+        click: function () {
+            const index = this.index()
+            this.parentBlock().trigger('tabSelect', index)
+        }
+    }
+})
+```
+
+### Sibling Communication
+
+Siblings communicate through their common parent:
+
+```js
+Beast.decl('SearchForm', {
+    on: {
+        search: function (event, query) {
+            this.elem('results').search(query)
+        }
+    }
+})
+
+Beast.decl('SearchForm__input', {
+    on: {
+        keypress: function (event) {
+            if (event.keyCode === 13) { // Enter
+                const query = this.domNode().value
+                this.parentBlock().trigger('search', query)
             }
         }
     }
 })
-```
 
-Существует соглашение, что события именуются инфинитивами. Если действие растянуто во времени (например, действие с анимацией), следует уточнить приставками `will` и `did` в какой момент вызывается связанное событие: `DidClose`, `WillClose`.
-
-```js
-Beast.decl({
-    Message: {
-        close: function () {
-            this.trigger('WillClose')
-            setTimeout(
-                function () {
-                    ...
-                    this.trigger('DidClose')
-                }.bind(this),
-                1000
-            )
-        }
+Beast.decl('SearchForm__results', {
+    search: function (query) {
+        // Perform search and display results
+        this.empty().append(
+            <item>Result 1</item>,
+            <item>Result 2</item>
+        )
     }
 })
 ```
 
-Если в событии замешан элемент, его имя ставится в конец: `ActivateTab`, `DidActivateTab`, `WillActivateTab`.
+## Best Practices
+
+### 1. Keep Components Focused
+
+Each component should have a single responsibility:
 
 ```js
-Beast.decl({
-    Menu__tab: {
-        onMod: {
-            active: function () {
-                this.trigger('ActivateTab')
-            }
-        }
+// Good: Focused responsibility
+Beast.decl('SearchInput', {
+    // Only handles input behavior
+})
+
+Beast.decl('SearchResults', {
+    // Only handles results display
+})
+
+// Bad: Too many responsibilities
+Beast.decl('SearchComponent', {
+    // Handles input, results, pagination, filtering, etc.
+})
+```
+
+### 2. Use Composition Over Inheritance
+
+Prefer composing components rather than deep inheritance:
+
+```js
+// Good: Composition
+Beast.decl('UserCard', {
+    expand: function () {
+        this.append(
+            <Avatar user={this.param('user')}/>,
+            <UserInfo user={this.param('user')}/>,
+            <ContactButtons user={this.param('user')}/>
+        )
+    }
+})
+
+// Less preferred: Deep inheritance
+Beast.decl('BaseCard', { /* ... */ })
+Beast.decl('UserCard', { inherit: 'BaseCard' })
+Beast.decl('AdminUserCard', { inherit: 'UserCard' })
+```
+
+### 3. Minimize DOM Queries
+
+Cache DOM references when needed multiple times:
+
+```js
+Beast.decl('Slider', {
+    domInit: function () {
+        this._slider = this.domNode().querySelector('.slider-track')
+        this._handle = this.domNode().querySelector('.slider-handle')
     },
-})
-```
-
-## Работа с событиями общей шины
-
-События общей шины следует называть с большой буквы, для общности с событиями компонентов.
-
-```js
-Beast.decl({
-    Arrow: {
-        submit: function () {
-            ...
-            this.triggerWin('Submit', query)
-        }
-    },
-    Serp: {
-        on: {
-            'Arrow:Submit': function (e, query) {
-                this.update(query)
-            }
-        }
+    
+    updatePosition: function (value) {
+        // Use cached references
+        const position = (value / 100) * this._slider.offsetWidth
+        this._handle.style.left = position + 'px'
     }
 })
 ```
 
-Этот тип событий — является одним из способов слабого связывания компонент. Если на обычное событие можно подписаться лишь имея ссылку на компонент (что доступно лишь ближайшим родителям), то на событие общей шины может подписываться кто угодно. Более подробно о ситуациях, в которых такой тип событий дает преимущества, рассказывается в главе о [взаимодействии компонент](04-component-interaction.md).
+### 4. Use Semantic Element Names
 
-## Строгое API
+Choose meaningful names that describe purpose, not appearance:
 
-Если у компонента __фиксированный порядок элементов__, никогда не стоит полагаться на порядок и состав, указанный пользователем; в свою очередь пользователю тоже не придется об этом думать. Кроме того, разработчик блока в любой момент может захотеть поменять порядок следования элементов.
-
-```xml
-<Snippet>
-    <title>...</title>
-    <text>...</text>
-    <url>...</url>
-</Snippet>
-```
-
-__Неправильно:__
 ```js
-Beast.decl({
-    Snippet: {
-        expand: function () {
-            this.append(
-                this.get('/')
-            )
-        }
+// Good: Semantic names
+Beast.decl('ProductCard', {
+    expand: function () {
+        this.append(
+            <image/>,
+            <title/>,
+            <price/>,
+            <addToCart/>
+        )
+    }
+})
+
+// Bad: Appearance-based names
+Beast.decl('ProductCard', {
+    expand: function () {
+        this.append(
+            <topImage/>,
+            <boldText/>,
+            <redPrice/>,
+            <blueButton/>
+        )
     }
 })
 ```
 
-__Правильно:__
+### 5. Handle Edge Cases
+
+Always consider and handle edge cases:
+
 ```js
-Beast.decl({
-    Snippet: {
-        expand: function () {
-            this.append(
-                this.get('title', 'url', 'text')
-            )
+Beast.decl('ImageGallery', {
+    expand: function () {
+        const images = this.param('images', [])
+        
+        if (images.length === 0) {
+            this.append(<empty>No images available</empty>)
+            return
         }
+        
+        if (images.length === 1) {
+            this.mod('SingleImage', true)
+        }
+        
+        this.append(
+            images.map(img => <image src={img.url} alt={img.alt}/>)
+        )
     }
 })
 ```
 
-__Модификаторы и параметры__ должны быть интерфейсом блока лишь в контексте BML. Для дальнейшего взаимодействия с компонентом снаружи следует использовать __методы__ — во-первых, потому что методы универсальнее и могут в том числе устанавливать модификаторы, во-вторых, это делает работу с чужими блоками более консистентной и простой, а в-третьих, у компонента уже есть набор стандартных методов, которые уже диктуют модель взаимодействия: `on()`, `append()`, `elem()` и т.д.
-
-__Неправильно:__
-```js
-var modalWindow = <ModalWindow>...</ModalWindow>
-modalWindow
-    .mod('Animation', 'zoom-in')
-    .mod('State', 'activated')
-```
-
-__Правильно:__
-```js
-var modalWindow = <ModalWindow Animation="zoom-in">...</ModalWindow>
-modalWindow.activate()
-
-...
-
-Best.decl({
-    ModalWindow: {
-        activate: function () {
-            this.mod('State', 'activated')
-        }
-    }
-})
-```
-
-## Инкапсуляция и полиморфизм
-
-В API блока не должно быть обязательных дочерних компонентов — указыватется лишь то, что может меняться.
-
-__Неправильно:__
-```xml
-<MessageWindow>
-    <text>...</text>
-    <close/>
-</MessageWindow>
-```
-
-__Правильно:__
-```xml
-<MessageWindow>
-    <text>...</text>
-</MessageWindow>
-```
-
-Если дочерний блок вставляется не как есть, а с ним проводятся дополнительные манипуляции, его следует выразить в API через элемент.
-
-__Неправильно:__
-```xml
-<Form>
-    <fields>...</fields>
-    <Button Size="M" Type="submit">...</Button>
-</Form>
-```
-
-__Правильно:__
-```xml
-<Form>
-    <fields>...</fields>
-    <submit>...</submit>
-</Form>
-```
-
-```js
-Beast.decl({
-    Form__submit: {
-        expand: function () {
-            this.implementWith(
-                <Button Size="M" Type="submit">{this.text()}</Button>
-            )
-        }
-    }
-})
-```
-
-В целом, это полезная практика — выражать дочерние блоки через элементы. С одной стороны, пользователю блока не обязательно знать, из чего тот собран; а с другой, дочерние блоки становятся доступны через метод `this.elem('implementedElementName')`, который, в отличие от `this.get('BlockName')`, не обязывает учитывать вложенность, а также позволяет относиться к дочернему блоку как к обычному элементу, что больше фокусирует на текущей работе.
-
-Более подробно об особенностях метода `implementWith` и о его отличии от наследования рассказывается в главе «[Имплементация компонентов](03-component-implementation.md)».
-
-## Для чего нужен &lt;script type="bml"&gt;
-
-BML в HTML-странице должен быть не более, чем деревом данных. Не рекомендуется добавлять дополнительную смысловую нагрузку, так как это делает компоненты зависимыми от конфигурации конкретной страницы.
-
-__Нерпавильно:__
-```xml
-<html>
-    <head>
-        <script type="bml">
-            <App>
-                <Tabs>
-                    <tab State="active" rel="bookmarks">Закладки</tab>
-                    <tab rel="settings">Настройки</tab>
-                </Tabs>
-                <Screen id="bookmarks">...</Screen>
-                <Screen id="settings">...</Screen>
-            </App>
-        </script>
-    </head>
-</html>
-```
-
-__Правильно:__
-```xml
-<html>
-    <head>
-        <script type="bml">
-            <App>
-                <Screens>
-                    <screen>
-                        <title>Закладки</title>
-                        ...
-                    </screen>
-                    <screen>
-                        <title>Настройки</title>
-                        ...
-                    </screen>
-                </Screens>
-            </App>
-        </script>
-    </head>
-</html>
-```
-
-Подробно об организации взаимодействия компонентов рассказывается в [соответствующей главе](04-component-interaction.md).
+This completes the component development guide with comprehensive coverage of naming conventions, modifiers, events, lifecycle methods, state management, and best practices.

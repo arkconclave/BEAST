@@ -1,6 +1,6 @@
-# Кодстайл
+# Code Style
 
-## Общие рекомендации по работе с кодом
-## Рекомендации к оформлению конструкций
-## Рекомендации к оформлению библиотек
-## Вресионирование и комментирование кода
+## General Code Recommendations
+## Recommendations for Code Structure Formatting
+## Recommendations for Library Formatting
+## Code Versioning and Documentation

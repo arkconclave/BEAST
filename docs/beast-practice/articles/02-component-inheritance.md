@@ -1,10 +1,10 @@
-# Наследование компонентов
+# Component Inheritance
 
-Наследование в Beast — расширение одной декларации другими. Это позволяет как строить новые компоненты на базе существующих, так и выносить за скобку общий код (в так называемые абстрактные компоненты).
+Inheritance in Beast is the extension of one declaration by others. This allows both building new components based on existing ones and extracting common code into abstract components.
 
-## Новые компоненты на базе существующих
+## New Components Based on Existing Ones
 
-Для примера рассмотрим блок `Snippet`.
+Let's consider a `Snippet` block as an example.
 
 ```xml
 <Snippet>
@@ -29,9 +29,9 @@ Beast.decl({
 })
 ```
 
-Со временем этот блок потребуется усложнить: добавить бейджик «реклама», сайтлинки, метаданные, рейтинг, карусель картинок, таблицу и так далее; позже обнаружится, что в одном случае удобно иметь таблицу над каруселью картинок, а в другом — под. Блок будет становиться сложным как сточки зрения польвазотеля (из-за перегруженной логики входых данных) так и с точки зрения разработки (кода будет все больше и больше, сложность внесения изменений растет экспоненциально). Таким образом, подобные конструкции надо разгружать.
+Over time, this block will need to become more complex: add an "advertisement" badge, sitelinks, metadata, rating, image carousel, table, etc. Later, it may be discovered that in one case it's convenient to have a table above the image carousel, and in another case — below it. The block will become complex both from a user perspective (due to overloaded input data logic) and from a development perspective (more and more code, complexity of making changes grows exponentially). Therefore, such constructions need to be simplified.
 
-Блок снипет следует ограничить самыми общими полями, а дальше начать отпускать потомков. Например, колдунщик картинок станет самостоятельным блоком, расширяющим блок снипета.
+The snippet block should be limited to the most general fields, and then start creating descendants. For example, an image widget becomes an independent block extending the snippet block.
 
 ```xml
 <SnippetImages>
@@ -48,187 +48,380 @@ Beast.decl({
 ```js
 Beast.decl({
     SnippetImages: {
-        inherits:'Snippet',
-        mod: {
-            Size:'M'
-        },
-        expand: function fn () {
-            this.inherited(fn)
-                .append(
-                    this.get('images')
-                )
+        inherit: 'Snippet',
+        expand: function () {
+            this.append(
+                this.get('title', 'url'),
+                <images>
+                    {this.get('images').children()}
+                </images>
+            )
         }
     },
-    SnippetImages__title: {
-        inherits:'Snippet__title'
-    },
-    SnippetImages__url: {
-        inherits:'Snippet__url'
-    }
 })
 ```
 
-Важно отметить, что наследование происходит именно на уровне компонентов, а не только блоков. Поэтому в примере с `SnippetImage` подтребовалось наследовать не только блок, но и элементы от соотствующих элементов `Snippet`. Сделано это для большей гибкости: с одной стороны, наследовать можно лишь то, что нужно для задачи, с другой, элемент может наследоваться от другого блока (например, `Snippet__button` от `Button`).
+The `inherit` property indicates that the `SnippetImages` declaration extends the `Snippet` declaration. All properties of the parent declaration are inherited: modifiers, methods, event handlers, etc.
 
-Как работает наследование: оно расширяет деларацию потомка полями декларации предка. Поэтому декларация `SnippetImages` становится фактически такой:
+## Method Override
+
+When inheriting, you can override parent methods:
 
 ```js
 Beast.decl({
-    SnippetImages: {
-        mod: {
-            Size:'M',
-            ShowFavicon: false,
-        },
+    Snippet: {
         expand: function () {
             this.append(
                 this.get('title', 'url', 'text')
             )
+        },
+        
+        updateContent: function () {
+            console.log('Updating basic snippet')
+        }
+    }
+})
 
+Beast.decl({
+    SnippetWithRating: {
+        inherit: 'Snippet',
+        
+        expand: function () {
             this.append(
-                this.get('images')
+                this.get('title', 'url', 'text'),
+                <rating>{this.param('rating')}</rating>
+            )
+        },
+        
+        updateContent: function () {
+            console.log('Updating snippet with rating')
+            this.elem('rating').text(this.param('rating'))
+        }
+    }
+})
+```
+
+## Calling Parent Methods
+
+You can call parent methods using `this.__base()`:
+
+```js
+Beast.decl({
+    SnippetExtended: {
+        inherit: 'Snippet',
+        
+        expand: function () {
+            // Call parent expand method
+            this.__base()
+            
+            // Add additional content
+            this.append(<extra>Additional content</extra>)
+        },
+        
+        updateContent: function () {
+            // Call parent update first
+            this.__base()
+            
+            // Then do additional updates
+            this.elem('extra').text('Updated extra content')
+        }
+    }
+})
+```
+
+## Multiple Inheritance
+
+Beast supports multiple inheritance by listing multiple parent declarations:
+
+```js
+Beast.decl({
+    Clickable: {
+        on: {
+            click: function () {
+                this.trigger('itemClick')
+            }
+        }
+    },
+    
+    Hoverable: {
+        on: {
+            mouseenter: function () {
+                this.mod('Hover', true)
+            },
+            mouseleave: function () {
+                this.mod('Hover', false)
+            }
+        }
+    },
+    
+    InteractiveSnippet: {
+        inherit: ['Snippet', 'Clickable', 'Hoverable'],
+        
+        expand: function () {
+            this.__base() // Calls Snippet.expand
+            this.mod('Interactive', true)
+        }
+    }
+})
+```
+
+## Abstract Components
+
+Abstract components contain common functionality but are not meant to be used directly:
+
+```js
+Beast.decl({
+    // Abstract base component for all form controls
+    FormControl: {
+        expand: function () {
+            this.mod('Required', this.param('required', false))
+            this.mod('Disabled', this.param('disabled', false))
+        },
+        
+        validate: function () {
+            const value = this.getValue()
+            const isValid = this.isValidValue(value)
+            this.mod('Valid', isValid)
+            return isValid
+        },
+        
+        // Abstract method - must be implemented by children
+        getValue: function () {
+            throw new Error('getValue must be implemented')
+        },
+        
+        // Abstract method - must be implemented by children
+        isValidValue: function (value) {
+            throw new Error('isValidValue must be implemented')
+        }
+    }
+})
+
+// Concrete implementations
+Beast.decl({
+    TextInput: {
+        inherit: 'FormControl',
+        
+        getValue: function () {
+            return this.domNode().value
+        },
+        
+        isValidValue: function (value) {
+            return value.length > 0
+        }
+    },
+    
+    EmailInput: {
+        inherit: 'FormControl',
+        
+        getValue: function () {
+            return this.domNode().value
+        },
+        
+        isValidValue: function (value) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            return emailRegex.test(value)
+        }
+    }
+})
+```
+
+## Mixin Pattern
+
+For shared functionality that doesn't form a clear hierarchy, use mixins:
+
+```js
+Beast.decl({
+    // Mixin for draggable functionality
+    Draggable: {
+        makeDraggable: function () {
+            let isDragging = false
+            let startX, startY
+            
+            this.on({
+                mousedown: function (e) {
+                    isDragging = true
+                    startX = e.clientX - this.domNode().offsetLeft
+                    startY = e.clientY - this.domNode().offsetTop
+                    this.mod('Dragging', true)
+                },
+                
+                mousemove: function (e) {
+                    if (!isDragging) return
+                    
+                    const x = e.clientX - startX
+                    const y = e.clientY - startY
+                    
+                    this.domNode().style.left = x + 'px'
+                    this.domNode().style.top = y + 'px'
+                },
+                
+                mouseup: function () {
+                    isDragging = false
+                    this.mod('Dragging', false)
+                }
+            })
+        }
+    },
+    
+    // Mixin for resizable functionality
+    Resizable: {
+        makeResizable: function () {
+            this.append(<resizeHandle/>)
+            
+            this.elem('resizeHandle').on({
+                mousedown: function (e) {
+                    e.preventDefault()
+                    // Resize logic here
+                }
+            })
+        }
+    }
+})
+
+// Component using multiple mixins
+Beast.decl({
+    DialogWindow: {
+        inherit: ['Dialog', 'Draggable', 'Resizable'],
+        
+        domInit: function () {
+            this.makeDraggable()
+            this.makeResizable()
+        }
+    }
+})
+```
+
+## Inheritance Chain Resolution
+
+When multiple inheritance chains exist, Beast resolves method calls in a specific order:
+
+1. Current component's methods
+2. First parent's methods (left to right in inherit array)
+3. Second parent's methods
+4. And so on...
+
+```js
+Beast.decl({
+    A: {
+        method: function () { return 'A' }
+    },
+    
+    B: {
+        method: function () { return 'B' }
+    },
+    
+    C: {
+        inherit: ['A', 'B'],
+        // Will use A.method since A is listed first
+    }
+})
+```
+
+## Best Practices for Inheritance
+
+### 1. Prefer Composition Over Deep Inheritance
+
+```js
+// Good: Shallow inheritance with composition
+Beast.decl({
+    UserCard: {
+        expand: function () {
+            this.append(
+                <Avatar/>,
+                <UserInfo/>,
+                <ActionButtons/>
             )
         }
     }
 })
+
+// Less preferred: Deep inheritance
+Beast.decl({ Card: {} })
+Beast.decl({ PersonCard: { inherit: 'Card' } })
+Beast.decl({ UserCard: { inherit: 'PersonCard' } })
+Beast.decl({ AdminUserCard: { inherit: 'UserCard' } })
 ```
 
-Важно при этом не забывать про метод `inherited()`, который и обеспечил в примере правильную склейку кода функции `expand` для `SnippetImages` и `Snippet`.
+### 2. Use Abstract Components for Common Patterns
 
-Наследуется не только декларация, но и CSS — за счет вывода CSS-классов с модификаторами как для текущего компонента, так и для предка. HTML для `SnippetImages` будет таким:
+```js
+// Good: Abstract base for similar components
+Beast.decl({
+    MediaItem: {
+        expand: function () {
+            this.append(
+                <thumbnail/>,
+                <title/>,
+                <metadata/>
+            )
+        },
+        
+        play: function () {
+            // Common play logic
+        }
+    }
+})
 
-```xml
-<div class="snippetimages snippet snippetimages_size_m snippet_size_m">
-    <div class="snippetimages__title snippet__title">...</div>
-    <div class="snippetimages__url snippet__url">...</div>
-    <div class="snippetimages__images">
-        <div class="snippetimages__image">...</div>
-        <div class="snippetimages__image">...</div>
-        ...
-    </div>
-</div>
+Beast.decl({
+    VideoItem: { inherit: 'MediaItem' },
+    AudioItem: { inherit: 'MediaItem' },
+    ImageItem: { inherit: 'MediaItem' }
+})
 ```
 
-В итоге дерево наследования компонентов на базе снипета может получиться таким:
-```
-snippet
-    snippetImages
-    snippetVideo
-    snippetMusic
-        snippetMusicAlbum
-        snippetMusicArtist
-        snippetMusicTrack
-```
-
-Так при создании очередного компонента в этой предметной области потребуется описать лишь его поведение, дополняющее `Snippet`, не копируя внутрь код самого `Snippet`. А изменения в родительком компоненте автоматически коснутся детей — `Snippet` может сколько угодно менять размер заголовка, цвет текста и пр.
-
-## Абстрактные компоненты
-
-Это компоненты, которые не отображаются в интерфейсе, но содержат общие для потомков поведение. Включаются полем декларации `abstract:true`. Имя такого компонента не будет фигурировать в CSS-классе потомков — другими словами, за абстрктными компонентами не может быть закреплено никакого внешнего вида.
-
-Разберем пример, где такое было бы оправдано — контролы. Абстрактный компонент `Control` включит в себя:
-- Модификаторы размера, темы и состояний
-- Реакцию на браузерные события, меняющие модификаторы компонента
-- Пользовательские события
-- Общие стили: соответствующая модификатору size высота, внешний вид фокуса и пр.
+### 3. Always Call Parent Methods When Extending
 
 ```js
 Beast.decl({
-    Control: {
-        abstract:true,
-        mod: {
-            Focus: false,
-            State: 'release',
-            Theme: 'default',
-        },
-        on: {
-            'mousedown touchstart': function(e) {
-                ...
-            },
-            'mouseup touchend': function(e) {
-                ...
-            },
-            'mouseout touchmove': function() {
-                ...
-            },
-
-            Press: '',
-            Release: '',
-            Focus: '',
-            Blur: '',
-            MouseOver: '',
-            MouseOut: '',
+    EnhancedButton: {
+        inherit: 'Button',
+        
+        expand: function () {
+            // Always call parent first
+            this.__base()
+            
+            // Then add enhancements
+            this.append(<analytics/>)
         }
     }
 })
 ```
 
-Потомок `Button` лишь добавит отображение иконки и пару модификаторов внешнего вида. Блок `Input` чуть больше расширит `Control`, но все равно — код блока сфокусируется именно на особенностях поведения инпута, не отвлекаясь больше на отработку браузерных событий.
+### 4. Use Meaningful Inheritance Hierarchies
+
+```js
+// Good: Clear hierarchy
+Beast.decl({ Control: {} })
+Beast.decl({ Input: { inherit: 'Control' } })
+Beast.decl({ TextInput: { inherit: 'Input' } })
+
+// Bad: Unclear relationships
+Beast.decl({ Thing: {} })
+Beast.decl({ Stuff: { inherit: 'Thing' } })
+Beast.decl({ Widget: { inherit: 'Stuff' } })
+```
+
+### 5. Document Abstract Methods
 
 ```js
 Beast.decl({
-    Input: {
-        inherits:'Control',
-        mod: {
-            Size:'M'
+    DataProvider: {
+        /**
+         * Abstract method: Must be implemented by subclasses
+         * @returns {Promise} Promise that resolves with data
+         */
+        fetchData: function () {
+            throw new Error('fetchData must be implemented by subclass')
         },
-        expand: function fn () {
-            this.inherited(fn)
-                .append(
-                    <input/>,
-                    <clear/>
-                )
-        },
-        value: function (value) {
-            if (typeof value === 'undefined') {
-                return this.elem('input')[0].domNode().value
-            } else {
-                this.elem('input')[0].domNode().value = value
-            }
-        },
-        focus: function () {
-            this.elem('input')[0].domNode().focus()
-        },
-        blur: function () {
-            this.elem('input')[0].domNode().blur()
-        },
-    },
-    input__input: {
-        tag:'input',
-        on: {
-            focus: function() {
-                this.parentBlock().mod('Focus', true)
-            },
-            blur: function() {
-                this.parentBlock().mod('Focus', false)
-            },
-        }
-    },
-    Input__clear: {
-        on: {
-            click: function () {
-                this.parentBlock().value('')
-            }
+        
+        loadData: function () {
+            return this.fetchData().then(data => {
+                this.render(data)
+            })
         }
     }
 })
 ```
 
-В будущем любой активный элемент, например, плашка «Показать ещё» в каком-нибудь списке, сможет наследоваться от control и добавить свою реакцию на нажатие и свой внешний вид; при этом автоматически будут учтены все тонкости поведения активного элемента. Так, благодаря наследованию, помимо сокращения времени разработки и фокусировке только на уникальных особенностях текущего компонента, однородные компоненты получают консистентные правила поведения.
-
-## Множественное наследование
-
-Благодаря этому механизму можно складывать в компонент, как в корзину, функциональность других компонентов. Например, блок `Grid` содержит поведение сетки, а блок `Control` — поведение активного элемента. Блоку `Button` пригодится поведение обоих: во-первых, это активный элемент, а во-вторых, ему полезно уметь подчиняться колонкам сетки для построения аккуратных веб-форм.
-
-```js
-Beast.decl({
-    Button: {
-        inherits:['Control', 'Grid']
-    }
-})
-```
-
-Кнопка размера М шириной в три колонки:
-
-```xml
-<Button Size="M" Col="3">Найти</Button>
-```
+This inheritance system allows for powerful code reuse while maintaining clear component hierarchies and responsibilities.

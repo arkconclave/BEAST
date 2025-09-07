@@ -1,4 +1,4 @@
-# Разработка библиотеки
+# Library Development
 
-## Пример библиотеки для работы с текстом и локализацией
-## Важность нейминга и ассоциаций с образом
+## Example Library for Text and Localization Work
+## Importance of Naming and Image Associations
