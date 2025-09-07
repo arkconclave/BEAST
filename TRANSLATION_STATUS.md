@@ -47,9 +47,8 @@ beast/
 ├── README.md (Complete English documentation)
 ├── docs/
 │   └── beast-practice/
-│       ├── README.md (Russian - original practice guide)
-│       ├── README_EN.md (English practice guide framework)
-│       └── articles/ (Russian originals - translate if needed)
+│       ├── README.md (Complete English practice guide)
+│       └── articles/ (All translated to English)
 ├── beast.js (main library)
 └── TRANSLATION_STATUS.md (this file)
 ```

@@ -1,13 +1,13 @@
 # Beast
 
-![Beast](https://github.com/kovchiy/beast/blob/master/images/cover.png)
+![Beast](images/cover.png)
 
 Beast is a tool for creating web interfaces. It covers the entire development cycle from templating to component interactions. It is derived from several principles and methodologies including:
 
 * [BEM methodology](https://en.bem.info/method/)
 * [i-bem.js](https://en.bem.info/technology/i-bem/v2/i-bem-js/)
 * [bh](https://github.com/bem/bh)
-* [React](http://facebook.github.io/react/)
+* [React](https://react.dev/)
 
 ## Table of Contents
 
